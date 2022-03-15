@@ -1,0 +1,56 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GenerateVoronoi
+#pragma kernel VoronoiPostProcess
+
+
+struct Point
+{
+    //screen position i pixels
+    float2 position;
+    //area color
+    float4 color;
+    int count;
+};
+
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+RWTexture2D<float> pointsID;
+Texture2D<float4> screenColor;
+RWStructuredBuffer<Point> Points;
+
+int PointsCount;
+
+
+float PowDistance(float2 a, float2 b)
+{
+    return dot((a - b), (a - b));
+}
+
+[numthreads(8,8,1)]
+void GenerateVoronoi(uint3 id : SV_DispatchThreadID)
+{
+    Point closest = Points[0];
+    float closestDistance = distance(id.xy, closest.position);
+    int pointId = 0;
+    for (int i = 0; i < PointsCount; i++)
+    {
+        float curDistance = distance(id.xy, Points[i].position);
+        if (curDistance < closestDistance)
+        {
+            closestDistance = curDistance;
+            closest = Points[i];
+            pointId = i;
+        }
+    }
+    pointsID[id.xy] = pointId;
+}
+
+[numthreads(8,8,1)]
+void VoronoiPostProcess(uint3 id : SV_DispatchThreadID)
+{
+    Result[id.xy] = screenColor[floor(Points[pointsID[id.xy]].position)];
+}
+
+

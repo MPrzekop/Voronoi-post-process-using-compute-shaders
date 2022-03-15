@@ -1,0 +1,52 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GenerateVoronoi
+
+
+struct Point
+{
+    //screen position i pixels
+    float2 position;
+    //area color
+    float4 color;
+    int count;
+};
+
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+
+RWStructuredBuffer<Point> Points;
+
+int PointsCount;
+
+
+float PowDistance(float2 a, float2 b)
+{
+    return dot((a - b), (a - b));
+}
+
+[numthreads(8,8,1)]
+void GenerateVoronoi(uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+
+
+    Point closest = Points[0];
+    float closestDistance = distance(id.xy, closest.position);
+    int pointId = 0;
+    for (int i = 0; i < PointsCount; i++)
+    {
+        float curDistance = distance(id.xy, Points[i].position);
+        if (curDistance < closestDistance)
+        {
+            closestDistance = curDistance;
+            closest = Points[i];
+            pointId = i;
+        }
+    }
+    //This is wrong, but nearly works.
+    //it is wrong because concurrent adds will lose data
+
+    Result[id.xy] = closest.color * (1 - distance(id.xy, closest.position) / 200);
+}
